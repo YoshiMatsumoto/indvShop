@@ -2,45 +2,69 @@
 import json
 import urllib.request
 import pandas as pd
-
-# API に渡すパラメータの値の指定
-url = "https://api.gnavi.co.jp/RestSearchAPI/v3/"
-key = "5e7d5d18655d2a151e83b2c92950d967" 
+import folium
 
 # API を使う関数の定義
-def GnaviApi():
+def GnaviApi(key, lat, lon, url):
     params = urllib.parse.urlencode({
         'keyid': key,
-        'latitude' : '35.156110',
-        'longitude' : '136.926681',
-        'range' : '1',
+        'latitude' : lat,
+        'longitude' : lon,
+        'range' : '2',
     })
     response = urllib.request.urlopen(url + '?' + params)
     return response.read()
 
-data = GnaviApi()
-
-readData = json.loads(data)["rest"]
-
+# 特定のキーのものを取り出す
 def GetData(readData, key):
     ln = []
     for dic in readData:
         ln.append(dic.get(key))
     return ln
 
-# 取得したいキー
-# code = ['latitude', 'longitude', 'name', 'category']
-
-def GetDf(code):
-    df = pd.DataFrame([])
+# データフレームにする
+def GetDf(code, readData):
+    df = pd.DataFrame(index=[])
     for i in code:
         ln = GetData(readData, i)
-        df.merge(ln)
+        ln = pd.Series(ln)
+        df = df.append(ln, ignore_index=True)
+    return df.T
 
-lat = GetData(readData, 'latitude')
-lon = GetData(readData, 'longitude')
-name = GetData(readData, 'name')
-cat = GetData(readData, 'category')
-df = pd.DataFrame([lat, lon, name, cat])
+def Address(path):
+    ad = pd.read_csv(path, ',', header=None, names=('name', 'lat', 'lon'))
+    return ad
 
-print(df)
+def main():
+    ad = Address('station.csv')
+    # API に渡すパラメータの値の指定
+    url = "https://api.gnavi.co.jp/RestSearchAPI/v3/"
+    key = "5e7d5d18655d2a151e83b2c92950d967" 
+
+    allDf = pd.DataFrame(index=[])
+
+    # 各地下鉄駅でループ
+    for i in range(len(ad)):
+        lat = ad['lat'][i]
+        lon = ad['lon'][i]
+
+        # データの取得
+        data = GnaviApi(key, lat, lon, url)
+        # データから取り出す
+        readData = json.loads(data)["rest"]
+        code = ['latitude', 'longitude', 'name', 'category']
+        df = GetDf(code, readData)
+        allDf = pd.concat([allDf, df], ignore_index=True)
+
+    allDf.to_csv('df.csv')
+    
+    # map1 = folium.Map(location=[-30.159215, 138.955078], zoom_start=4)
+    # lat = allDf[0]
+    # lon = allDf[1]
+    # name = allDf[2]
+    # for i in range(len(lat)):
+    #     folium.Marker([float(lat[i]), float(lon[i])], popup=name[i]).add_to(map1)
+    # map1.save('map1.html')
+
+if __name__ == '__main__':
+    main()
