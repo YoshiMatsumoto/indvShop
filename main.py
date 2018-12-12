@@ -56,15 +56,8 @@ def main():
         df = GetDf(code, readData)
         allDf = pd.concat([allDf, df], ignore_index=True)
 
+    # csvとして出力
     allDf.to_csv('df.csv')
-    
-    # map1 = folium.Map(location=[-30.159215, 138.955078], zoom_start=4)
-    # lat = allDf[0]
-    # lon = allDf[1]
-    # name = allDf[2]
-    # for i in range(len(lat)):
-    #     folium.Marker([float(lat[i]), float(lon[i])], popup=name[i]).add_to(map1)
-    # map1.save('map1.html')
 
 if __name__ == '__main__':
     main()
